@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-nginx-web-svc
+  labels:
+    app: python-nginx-web
+spec:
+  ports:
+    - port: 8080
+      targetPort: 9376
+  selector:
+    app: python-nginx-web
+    tier: frontend
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: python-nginx-pv-claim
+  labels:
+    app: python-nginx-web
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: python-nginx-web
+  labels:
+    app: python-nginx-web
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: python-nginx-web
+        tier: frontend
+    spec:
+      containers:
+      - image: 077077460384.dkr.ecr.ap-southeast-2.amazonaws.com/python-nginx-web:latest
+        name: python-nginx-web
+        env:
+        - name: PYTHON-NGINX-WEB_DB_HOST
+          value: python-nginx-postgres
+        ports:
+        - containerPort: 9376
+          name: python-nginx-web
+        volumeMounts:
+        - name: python-nginx-web-persistent-storage
+          mountPath: /var/www/html
+        command: ["/usr/local/bin/python", "create_db.py"]
+      volumes:
+      - name: python-nginx-web-persistent-storage
+        persistentVolumeClaim:
+          claimName: python-nginx-web-pv-claim
